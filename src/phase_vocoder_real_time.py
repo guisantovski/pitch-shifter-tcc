@@ -81,11 +81,11 @@ def phase_vocoder_chunk(chunk):
         mag_out   = np.zeros(n_bins)
         freq_out  = np.zeros(n_bins)
 
-        for k in range(n_bins):
-            src = int(round(k / pitch_ratio))
-            if 0 <= src < n_bins:
-                mag_out[k]  += magnitude[src]
-                freq_out[k] += true_freq[src] * pitch_ratio
+        k_out  = np.arange(n_bins)
+        k_src  = np.clip(np.round(k_out / pitch_ratio).astype(int), 0, n_bins - 1)
+        valid  = (k_src >= 0) & (k_src < n_bins)
+        mag_out[valid]  = magnitude[k_src[valid]]
+        freq_out[valid] = true_freq[k_src[valid]] * pitch_ratio
 
         # --- Síntese ---
         # Acumula fase de saída
