@@ -2,9 +2,9 @@ import numpy as np
 import sounddevice as sd
 
 # --- Configurações ---
-SAMPLE_RATE   = 48000
-BUFFER_SIZE   = 1024
-ASIO_DEVICE   = 13
+SAMPLE_RATE   = 96000
+BUFFER_SIZE   = 256
+ASIO_DEVICE   = 17
 SEMITONES     = -5       # negativo = transpor para baixo
 
 # --- Parâmetros do Phase Vocoder ---
