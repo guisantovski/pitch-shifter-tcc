@@ -10,6 +10,7 @@ O objetivo é transpor o sinal de um instrumento ao vivo, com latência baixa o 
 |---|---|---|
 | Exploração offline (librosa) | [notebooks/01_exploracao.ipynb](notebooks/01_exploracao.ipynb) | Funcional |
 | Passthrough ASIO (teste de latência) | [src/passthrough.py](src/passthrough.py) | Funcional |
+| Passthrough ASIO em MATLAB (Audio Toolbox) | [matlab/passthrough.m](matlab/passthrough.m) | Funcional |
 | Phase vocoder em tempo real | [src/phase_vocoder_real_time.py](src/phase_vocoder_real_time.py) | Em ajuste |
 | PSOLA | [src/psola.py](src/psola.py) | A implementar |
 | Pipeline em tempo real | [src/realtime.py](src/realtime.py) | A implementar |
