@@ -33,8 +33,8 @@ disp('Dispositivos de entrada:');  disp(getAudioDevices(leitor)');
 disp('Dispositivos de saída:');    disp(getAudioDevices(escritor)');
 
 % No ASIO a entrada e a saída usam o MESMO dispositivo:
-% leitor.Device   = 'Focusrite USB ASIO';
-% escritor.Device = 'Focusrite USB ASIO';
+leitor.Device   = 'Focusrite USB ASIO';
+escritor.Device = 'Focusrite USB ASIO';
 
 if ispc
     fprintf('Driver: %s | ', leitor.Driver);
