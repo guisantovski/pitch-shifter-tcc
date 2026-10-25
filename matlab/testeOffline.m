@@ -24,7 +24,7 @@ for s = [-12 -5 -4 -1 0 1 4 5 7 12]
             1200*log2(f/esp), rmsRel(seg0, x), rmsRel(seg1, x));
 end
 
-%% 2. Acorde (Lá maior, 6 harmônicos por nota)
+%% 2. Acorde sintético (Lá maior: 110, 138,6 e 164,8 Hz, 6 harmônicos por nota)
 t = (0:2*fs-1)'/fs;
 x = zeros(size(t));
 for fn = [110 138.59 164.81]
@@ -32,7 +32,7 @@ for fn = [110 138.59 164.81]
         x = x + 0.1/h * sin(2*pi*fn*h*t + h);
     end
 end
-fprintf('\nAcorde de Lá maior: ganho de RMS\n');
+fprintf('\nAcorde sintético de Lá maior: ganho de RMS\n');
 for s = [-5 5]
     y0 = processaEmBlocos(x, pvInit(N, Ha, B, s, false));
     y1 = processaEmBlocos(x, pvInit(N, Ha, B, s, true));
@@ -47,19 +47,30 @@ y = processaEmBlocos(x, pvInit(N, Ha, B, 0));
 fprintf('\nLatência do algoritmo (pico do impulso): %d amostras = %.1f ms\n', ...
         k - 5000, 1e3*(k - 5000)/fs);
 
-%% 4. Áudio real do repositório: Lá -> Mi (-5 semitons)
-arq = fullfile('..', 'audio_samples', 'A_natural.wav');
-if exist(arq, 'file')
+%% 4. Gravações reais do repositório
+% A_natural: corda Lá solta (-5 st -> Mi). strumming_chords: acordes
+% tocados (polifonia), em -5 e +5 semitons.
+casos = {'A_natural', -5; 'strumming_chords', -5; 'strumming_chords', 5};
+if ~exist('saida', 'dir'), mkdir('saida'); end
+fprintf('\nGravações reais: ganho de RMS (1.00 = sem perda)\n');
+for c = 1:size(casos, 1)
+    arq = fullfile('..', 'audio_samples', [casos{c,1} '.wav']);
+    if ~exist(arq, 'file'), continue; end
     [x, fsArq] = audioread(arq);
     x = mean(x, 2);
-    if ~exist('saida', 'dir'), mkdir('saida'); end
-    y = processaEmBlocos(x, pvInit(N, Ha, B, -5, false));
-    audiowrite(fullfile('saida', 'A_natural_rt_original.wav'), 0.99*y/max(abs(y)), fsArq);
-    y = processaEmBlocos(x, pvInit(N, Ha, B, -5, true));
-    audiowrite(fullfile('saida', 'A_natural_rt_phaselock.wav'), 0.99*y/max(abs(y)), fsArq);
-    fprintf('\nGravados saida/A_natural_rt_original.wav e saida/A_natural_rt_phaselock.wav\n');
-    fprintf('(compare com audio_samples/E_natural.wav)\n');
+    s = casos{c,2};
+    y0 = processaEmBlocos(x, pvInit(N, Ha, B, s, false));
+    y1 = processaEmBlocos(x, pvInit(N, Ha, B, s, true));
+    xr = x(1:numel(y0));
+    fprintf(' %-17s %+d st: original %.2f | phase lock %.2f\n', casos{c,1}, s, ...
+            rmsRel(y0, xr), rmsRel(y1, xr));
+    % Mesmo ganho nos dois arquivos, para comparar o volume de ouvido
+    pico = max([abs(y0); abs(y1)]) / 0.99;
+    base = sprintf('%s_%+dst', casos{c,1}, s);
+    audiowrite(fullfile('saida', [base '_original.wav']),  y0/pico, fsArq);
+    audiowrite(fullfile('saida', [base '_phaselock.wav']), y1/pico, fsArq);
 end
+fprintf('Arquivos em matlab/saida/\n\n');
 
 %% Funções auxiliares
 function y = processaEmBlocos(x, st)
