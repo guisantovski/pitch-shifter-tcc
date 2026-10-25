@@ -12,8 +12,10 @@ fs        = 44100;  % taxa de amostragem (igual à do Focusrite Control)
 B         = 64;     % bloco de I/O = buffer ASIO (64 ou 128)
 N         = 1024;   % quadro/FFT do phase vocoder
 Ha        = 256;    % hop de análise (75% de sobreposição)
+                    % 128 (87,5%) reduz o phasiness a partir de ~5 semitons,
+                    % com o dobro de processamento
 semitons  = -5;     % transposição (Lá -> Mi = -5)
-phaseLock = true;   % false = algoritmo original do Grondin
+phaseLock = false;  % true = phase locking (testado e descartado: mais phasiness)
 duracao   = 60;     % segundos
 ganho     = 1.0;    % ganho de saída
 usarSlider = false; % true abre uma janela com slider de semitons

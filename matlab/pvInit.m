@@ -7,11 +7,13 @@ function st = pvInit(N, Ha, B, semitons, phaseLock)
 %              ser múltiplo de B
 %     semitons transposição em semitons (pode ser trocada depois com
 %              pvSetSemitons)
-%     phaseLock true liga o phase locking de Laroche-Dolson (padrão);
-%              false reproduz o algoritmo original do Grondin
+%     phaseLock true liga o phase locking de Laroche-Dolson; false
+%              (padrão) reproduz o algoritmo original do Grondin.
+%              Testado em 25/10/2026: melhora o RMS, mas piora o som de
+%              ouvido (mais phasiness), por isso fica desligado.
 
     if nargin < 5
-        phaseLock = true;
+        phaseLock = false;
     end
     if mod(Ha, B) ~= 0
         error('pvInit: Ha (%d) tem que ser múltiplo de B (%d).', Ha, B);
