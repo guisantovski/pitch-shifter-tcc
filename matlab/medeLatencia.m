@@ -67,7 +67,10 @@ for m = 1:numel(modos)
 
         x = leitor();
         rec(idx) = x(:, 2);
-        totUnderrun = totUnderrun + escritor([y y]);
+        nUnderrun = escritor([y y]);
+        if idx(1) > fs                      % ignora a partida, como na medida
+            totUnderrun = totUnderrun + nUnderrun;
+        end
     end
 
     % Descarta o primeiro segundo (partida do driver)
@@ -80,7 +83,6 @@ for m = 1:numel(modos)
         warning(['Medida pouco confiável: confira o cabo, o Input 2 em modo ' ...
                  'linha e o volume de saída.']);
     end
-    pause(0.5);
 end
 
 release(leitor);
