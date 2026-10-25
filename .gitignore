@@ -17,3 +17,4 @@ build/
 *.mex*
 slprj/
 *.autosave
+saida/
