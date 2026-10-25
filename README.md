@@ -11,7 +11,7 @@ O objetivo é transpor o sinal de um instrumento ao vivo, com latência baixa o 
 | Exploração offline (librosa) | [notebooks/01_exploracao.ipynb](notebooks/01_exploracao.ipynb) | Funcional |
 | Passthrough ASIO (teste de latência) | [src/passthrough.py](src/passthrough.py) | Funcional |
 | Passthrough ASIO em MATLAB (Audio Toolbox) | [matlab/passthrough.m](matlab/passthrough.m) | Funcional |
-| Phase vocoder do Grondin em tempo real (MATLAB) | [matlab/pitchShiftRT.m](matlab/pitchShiftRT.m) | Validado offline ([matlab/testeOffline.m](matlab/testeOffline.m)); falta testar com a guitarra |
+| Phase vocoder do Grondin em tempo real (MATLAB) | [matlab/pitchShiftRT.m](matlab/pitchShiftRT.m) | Funcional: testado com a guitarra até ±6 semitons; validação offline em [matlab/testeOffline.m](matlab/testeOffline.m) |
 | Medição de latência por loopback (MATLAB) | [matlab/medeLatencia.m](matlab/medeLatencia.m) | Validado em simulação; falta medir na Scarlett |
 | Phase vocoder em tempo real | [src/phase_vocoder_real_time.py](src/phase_vocoder_real_time.py) | Em ajuste |
 | PSOLA | [src/psola.py](src/psola.py) | A implementar |
