@@ -1,7 +1,11 @@
 function st = pvSetSemitons(st, semitons)
 % pvSetSemitons  Troca a transposição sem reiniciar o estado.
 %   O hop de síntese é arredondado para um inteiro, então o fator efetivo
-%   é Hs/Ha (erro máximo de ~3 cents com Ha = 256).
+%   é Hs/Ha. O erro de afinação resultante, medido com o benchmark/, é de
+%   até ~3 cents com Ha = 256 e até ~9 cents com Ha = 128 (ex.: -7 st dá
+%   Hs = 85 em vez de 85,4). Testado em 10/11/2026: usar Hs real (sem
+%   arredondar) acerta a altura, mas cria modulação de amplitude forte e
+%   perde ~7 dB, então o arredondamento fica.
 
     if abs(semitons) > 12
         error('pvSetSemitons: use no máximo ±12 semitons.');
