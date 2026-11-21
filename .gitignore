@@ -18,3 +18,7 @@ build/
 slprj/
 *.autosave
 saida/
+
+# Raspberry Pi (binários)
+pi/pv_offline
+pi/pv_alsa

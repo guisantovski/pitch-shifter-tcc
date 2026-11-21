@@ -14,6 +14,7 @@ O objetivo é transpor o sinal de um instrumento ao vivo, com latência baixa o 
 | Phase vocoder do Grondin em tempo real (MATLAB) | [matlab/pitchShiftRT.m](matlab/pitchShiftRT.m) | Funcional: testado com a guitarra até ±6 semitons; validação offline em [matlab/testeOffline.m](matlab/testeOffline.m) |
 | Medição de latência por loopback (MATLAB) | [matlab/medeLatencia.m](matlab/medeLatencia.m) | Validado em simulação; falta medir na Scarlett |
 | Benchmark de afinação e qualidade (MATLAB) | [matlab/benchmark/](matlab/benchmark/README.md) | Funcional offline; gravação ao vivo e comparação com a Neural DSP prontas para testar |
+| Port para Raspberry Pi (C + FFTW + ALSA) | [pi/](pi/README.md) | Validado offline contra o MATLAB; falta testar no Pi com a Scarlett |
 | Phase vocoder em tempo real | [src/phase_vocoder_real_time.py](src/phase_vocoder_real_time.py) | Em ajuste |
 | PSOLA | [src/psola.py](src/psola.py) | A implementar |
 | Pipeline em tempo real | [src/realtime.py](src/realtime.py) | A implementar |
