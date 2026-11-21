@@ -17,8 +17,8 @@ all: pv_offline pv_alsa
 pv_offline: src/pv_offline.c src/pv.c src/wav.c src/pv.h src/wav.h
 	$(CC) $(CFLAGS) -o $@ src/pv_offline.c src/pv.c src/wav.c $(LDLIBS)
 
-pv_alsa: src/pv_alsa.c src/pv.c src/pv.h
-	$(CC) $(CFLAGS) -o $@ src/pv_alsa.c src/pv.c $(LDLIBS) -lasound -lpthread
+pv_alsa: src/pv_alsa.c src/pv.c src/wav.c src/pv.h src/wav.h
+	$(CC) $(CFLAGS) -o $@ src/pv_alsa.c src/pv.c src/wav.c $(LDLIBS) -lasound -lpthread
 
 clean:
 	rm -f pv_offline pv_alsa

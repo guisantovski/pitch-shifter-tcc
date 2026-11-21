@@ -9,6 +9,7 @@
 #include <fftw3.h>
 #include <math.h>
 #include <stdatomic.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -87,10 +88,21 @@ pv_t *pv_cria(int N, int Ha, int B, int semitons)
         pv->hopFase[k] = fmod(Ha * w, DOIS_PI);
     }
 
-    /* FFTW_MEASURE escolhe o algoritmo mais rápido para esta CPU (leva
-     * alguns ms, só na inicialização). */
+    /* FFTW_MEASURE escolhe o algoritmo mais rápido para esta CPU, mas no
+     * Pi 2 leva dezenas de segundos. O resultado fica salvo ("wisdom") em
+     * $PV_WISDOM ou ~/.pv_wisdom e as execuções seguintes partem na hora. */
+    char wisdom[512] = "";
+    const char *w = getenv("PV_WISDOM"), *home = getenv("HOME");
+    if (w) snprintf(wisdom, sizeof wisdom, "%s", w);
+    else if (home) snprintf(wisdom, sizeof wisdom, "%s/.pv_wisdom", home);
+    int temWisdom = wisdom[0] && fftwf_import_wisdom_from_filename(wisdom);
+    if (wisdom[0] && !temWisdom)
+        fprintf(stderr, "Planejando a FFT pela primeira vez (pode levar 1 min no Pi 2; "
+                "fica salvo em %s)...\n", wisdom);
     pv->fwd = fftwf_plan_dft_r2c_1d(N, pv->tempo, pv->espec, FFTW_MEASURE);
     pv->inv = fftwf_plan_dft_c2r_1d(N, pv->espec, pv->tempo, FFTW_MEASURE);
+    if (wisdom[0] && !temWisdom)
+        fftwf_export_wisdom_to_filename(wisdom);
     if (!pv->fwd || !pv->inv) { pv_destroi(pv); return NULL; }
 
     pv->blk = 0;
