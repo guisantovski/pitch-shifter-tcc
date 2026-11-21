@@ -36,9 +36,22 @@ A diferença vem do C usar float na FFT (o MATLAB usa double) e não é audível
    echo '@audio - rtprio 95
    @audio - memlock unlimited' | sudo tee /etc/security/limits.d/audio.conf
    ```
-4. CPU sempre no máximo (evita xruns quando o clock sobe e desce):
+4. CPU sempre no máximo (evita xruns quando o clock sobe e desce). **Isso é essencial no Pi 2**: com o governor padrão, o `pv_alsa` a B = 64 deu xruns em quase todos os blocos; com `performance`, funcionou. O ajuste volta ao padrão a cada reinicialização, então rode de novo depois de reiniciar:
    ```bash
-   echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
+   sudo sh -c 'for f in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do echo performance > $f; done'
+   ```
+   Para deixar fixo, crie o serviço abaixo uma vez:
+   ```bash
+   sudo tee /etc/systemd/system/cpu-performance.service >/dev/null <<'EOT'
+   [Unit]
+   Description=CPU governor performance
+   [Service]
+   Type=oneshot
+   ExecStart=/bin/sh -c 'for f in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do echo performance > $f; done'
+   [Install]
+   WantedBy=multi-user.target
+   EOT
+   sudo systemctl enable --now cpu-performance.service
    ```
 5. Ligue a Scarlett numa porta USB e confira o nome com `aplay -l` e `arecord -l`. Ela costuma aparecer como card `USB`, e por isso o padrão é `-d hw:USB`. Se não for, use `-d hw:N` com o número do card.
    - Use a fonte na porta de alimentação USB da 4i4: as portas do Pi 2 fornecem pouca corrente (600 mA no total, por padrão).
@@ -54,6 +67,8 @@ A diferença vem do C usar float na FFT (o MATLAB usa double) e não é audível
 ./pv_alsa -p 128 -n 3              # se houver xruns com 64
 ```
 
+Na primeira execução o programa planeja a FFT, o que leva cerca de 40 s no Pi 2 (aparece uma mensagem). O plano fica salvo em `~/.pv_wisdom` (ou no arquivo da variável `PV_WISDOM`) e as execuções seguintes partem na hora.
+
 Durante a execução, digite um número e Enter para trocar os semitons (ex.: `-7`), `+` ou `-` para subir ou descer 1, `e` para ver as estatísticas (xruns e tempo de processamento) e `q` para sair.
 
 ### Medir a latência
@@ -66,3 +81,15 @@ Mesma ligação do `medeLatencia.m`: cabo da saída Output 1 para o Input 2, com
 ```
 
 O programa manda um clique a cada 0,5 s e mostra a mediana de 12 medidas. A diferença entre as duas medidas deve dar N − B (21,8 ms com N = 1024, B = 64 a 44,1 kHz).
+
+### Comparar a saída ao vivo com o processamento offline
+
+`--grava SEG` guarda SEG segundos da entrada e da saída do phase vocoder (`grav_entrada.wav` e `grav_saida.wav`, na pasta atual) e encerra sozinho. Deixe os semitons fixos durante a gravação:
+
+```bash
+./pv_alsa -s -5 --grava 20        # toque durante os 20 s
+./pv_offline grav_entrada.wav /tmp/offline.wav -5
+cmp <(tail -c +45 /tmp/offline.wav) <(tail -c +45 grav_saida.wav) && echo igual
+```
+
+Se a saída ao vivo for igual à offline, o caminho de tempo real (ALSA, buffers) não altera o som, e qualquer diferença em relação ao MATLAB vem do algoritmo ou da entrada. Os dois arquivos também podem ser levados ao PC para o `matlab/benchmark/` (ou conferidos com `tools/referencia.py`).

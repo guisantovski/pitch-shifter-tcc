@@ -14,6 +14,9 @@
  *     -g G     ganho de saída (padrão 1.0)
  *     --bypass     só copia entrada -> saída (passthrough)
  *     --latencia   mede a latência com um cabo de loopback (ver README)
+ *     --grava SEG  grava SEG segundos da entrada e da saída do phase vocoder
+ *                  em grav_entrada.wav e grav_saida.wav (para comparar com o
+ *                  processamento offline; mantenha os semitons fixos)
  *
  * Durante a execução, digite no terminal e tecle Enter:
  *     número (ex.: -7)  troca os semitons     + / -  sobe / desce 1
@@ -21,6 +24,7 @@
  */
 #define _GNU_SOURCE
 #include "pv.h"
+#include "wav.h"
 
 #include <alsa/asoundlib.h>
 #include <math.h>
@@ -41,6 +45,7 @@ static int B = 64, NP = 2, canalIn = 0, semitons = -5, N = 1024, Ha = 256;
 static float ganho = 1.0f;
 static int bypass = 0, latencia = 0;
 static int linkado = 0;
+static int gravaSeg = 0;
 
 /* ---------- estado compartilhado com a thread de controle ---------- */
 static atomic_int rodando = 1;
@@ -192,6 +197,7 @@ int main(int argc, char **argv)
         const char *a = argv[i], *v = i + 1 < argc ? argv[i + 1] : NULL;
         if (!strcmp(a, "--bypass")) bypass = 1;
         else if (!strcmp(a, "--latencia")) latencia = 1;
+        else if (v && !strcmp(a, "--grava")) gravaSeg = atoi(argv[++i]);
         else if (v && !strcmp(a, "-d")) dev = argv[++i];
         else if (v && !strcmp(a, "-r")) fs = (unsigned)atoi(argv[++i]);
         else if (v && !strcmp(a, "-p")) B = atoi(argv[++i]);
@@ -220,6 +226,14 @@ int main(int argc, char **argv)
     if (!linkado) fprintf(stderr, "aviso: snd_pcm_link indisponível, partindo as pontas separadamente\n");
 
     float *x = calloc(B, sizeof(float)), *y = calloc(B, sizeof(float));
+    long nRec = 0, posRec = 0;           /* gravação opcional (--grava) */
+    float *recX = NULL, *recY = NULL;
+    if (gravaSeg > 0 && !latencia && !bypass) {
+        nRec = (long)gravaSeg * (long)fs;
+        recX = calloc(nRec, sizeof(float));
+        recY = calloc(nRec, sizeof(float));
+        if (!recX || !recY) { fprintf(stderr, "sem memória para --grava %d\n", gravaSeg); return 1; }
+    }
 
     signal(SIGINT, sai);
     signal(SIGTERM, sai);
@@ -293,6 +307,12 @@ int main(int argc, char **argv)
 
         if (bypass) memcpy(y, x, B * sizeof(float));
         else pv_processa_bloco(pv, x, y);
+        if (recX && posRec + B <= nRec) {
+            memcpy(recX + posRec, x, B * sizeof(float));
+            memcpy(recY + posRec, y, B * sizeof(float));
+            posRec += B;
+            if (posRec + B > nRec) atomic_store(&rodando, 0);   /* gravou tudo */
+        }
         de_float(&rep, y);
 
         long long dt = ns() - t0;
@@ -324,6 +344,14 @@ int main(int argc, char **argv)
         }
     }
 
+    if (recX) {
+        if (wav_grava("grav_entrada.wav", recX, (int)posRec, (int)fs) ||
+            wav_grava("grav_saida.wav", recY, (int)posRec, (int)fs))
+            fprintf(stderr, "não consegui gravar grav_*.wav\n");
+        else
+            fprintf(stderr, "Gravados grav_entrada.wav e grav_saida.wav (%ld amostras, %+d semitons)\n",
+                    posRec, pv_semitons(pv));
+    }
     snd_pcm_drop(rep.pcm);
     snd_pcm_close(rep.pcm);
     snd_pcm_close(cap.pcm);
