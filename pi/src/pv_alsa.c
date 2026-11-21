@@ -219,25 +219,38 @@ int main(int argc, char **argv)
     linkado = snd_pcm_link(cap.pcm, rep.pcm) == 0;
     if (!linkado) fprintf(stderr, "aviso: snd_pcm_link indisponível, partindo as pontas separadamente\n");
 
+    float *x = calloc(B, sizeof(float)), *y = calloc(B, sizeof(float));
+
+    signal(SIGINT, sai);
+    signal(SIGTERM, sai);
+    if (!latencia) {
+        /* Thread do teclado, criada ANTES do mlockall e com pilha pequena:
+         * com MCL_FUTURE e o limite de memlock padrão do Pi OS (poucos MB),
+         * uma pilha de 8 MB não cabe e o pthread_create falha. */
+        pthread_attr_t at;
+        pthread_attr_init(&at);
+        pthread_attr_setstacksize(&at, 128 * 1024);
+        pthread_t thCtl;
+        int e = pthread_create(&thCtl, &at, controle, NULL);
+        if (e) {
+            fprintf(stderr, "aviso: sem controle pelo teclado (pthread_create: %s)\n", strerror(e));
+        } else {
+            pthread_detach(thCtl);
+            fprintf(stderr, "Rodando %s. Digite semitons (ex.: -7), + ou -, e (estatísticas) ou q.\n",
+                    bypass ? "em bypass" : "o phase vocoder");
+        }
+    }
+
     /* Tempo real: trava a memória e pede prioridade SCHED_FIFO. Precisa de
-     * root ou do grupo audio com rtprio (ver README). */
-    if (mlockall(MCL_CURRENT | MCL_FUTURE))
-        fprintf(stderr, "aviso: mlockall falhou (sem permissão?)\n");
+     * root ou do grupo audio com rtprio (ver README). Tudo já foi alocado
+     * acima, então se o limite de memlock for baixo basta travar o que
+     * existe. */
+    if (mlockall(MCL_CURRENT | MCL_FUTURE) && mlockall(MCL_CURRENT))
+        fprintf(stderr, "aviso: mlockall falhou (configure memlock, ver README)\n");
     struct sched_param sp = { .sched_priority = 80 };
     if (pthread_setschedparam(pthread_self(), SCHED_FIFO, &sp))
         fprintf(stderr, "aviso: sem SCHED_FIFO, pode haver xruns (rode com sudo ou configure rtprio)\n");
 
-    signal(SIGINT, sai);
-    signal(SIGTERM, sai);
-    pthread_t thCtl;
-    if (!latencia) {
-        pthread_create(&thCtl, NULL, controle, NULL);
-        pthread_detach(thCtl);
-        fprintf(stderr, "Rodando %s. Digite semitons (ex.: -7), + ou -, e (estatísticas) ou q.\n",
-                bypass ? "em bypass" : "o phase vocoder");
-    }
-
-    float *x = calloc(B, sizeof(float)), *y = calloc(B, sizeof(float));
     const long long orcNs = (long long)(1e9 * B / fs);
 
     /* Medida de latência: clique a cada 0,5 s, procura o pico na entrada */
