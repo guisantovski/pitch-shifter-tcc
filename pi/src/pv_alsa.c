@@ -45,7 +45,7 @@ static int linkado = 0;
 /* ---------- estado compartilhado com a thread de controle ---------- */
 static atomic_int rodando = 1;
 static atomic_long xruns, blocos, acimaOrcamento;
-static atomic_long piorNs, somaNs;
+static atomic_llong piorNs, somaNs;   /* 64 bits também no Pi 2 (32 bits) */
 
 /* ---------- ALSA ---------- */
 typedef struct {
@@ -177,11 +177,11 @@ static void *controle(void *arg)
 
 static void sai(int s) { (void)s; atomic_store(&rodando, 0); }
 
-static long ns(void)
+static long long ns(void)
 {
     struct timespec t;
     clock_gettime(CLOCK_MONOTONIC, &t);
-    return t.tv_sec * 1000000000L + t.tv_nsec;
+    return (long long)t.tv_sec * 1000000000LL + t.tv_nsec;
 }
 
 static int compara(const void *a, const void *b) { return *(const int *)a - *(const int *)b; }
@@ -238,7 +238,7 @@ int main(int argc, char **argv)
     }
 
     float *x = calloc(B, sizeof(float)), *y = calloc(B, sizeof(float));
-    const long orcNs = (long)(1e9 * B / fs);
+    const long long orcNs = (long long)(1e9 * B / fs);
 
     /* Medida de latência: clique a cada 0,5 s, procura o pico na entrada */
     const long periodo = fs / 2, janela = fs / 4;
@@ -257,7 +257,7 @@ int main(int argc, char **argv)
             atomic_fetch_add(&xruns, 1); inicia(&cap, &rep); continue;
         } else if (r < 0) { fprintf(stderr, "readi: %s\n", snd_strerror((int)r)); break; }
 
-        long t0 = ns();
+        long long t0 = ns();
         para_float(&cap, canalIn, x);
 
         if (latencia) {
@@ -275,14 +275,14 @@ int main(int argc, char **argv)
                 x[i] = (ti % periodo == 0 && ti > 0) ? 0.5f : 0.0f;
                 if (x[i] != 0 && ti / periodo > 2) ultimoClique = ti;
             }
-            if (nAtr >= nCliques || t > 15L * fs) atomic_store(&rodando, 0);   /* 15 s no máximo */
+            if (nAtr >= nCliques || t > 15L * (long)fs) atomic_store(&rodando, 0);   /* 15 s no máximo */
         }
 
         if (bypass) memcpy(y, x, B * sizeof(float));
         else pv_processa_bloco(pv, x, y);
         de_float(&rep, y);
 
-        long dt = ns() - t0;
+        long long dt = ns() - t0;
         atomic_fetch_add(&blocos, 1);
         atomic_fetch_add(&somaNs, dt);
         if (dt > atomic_load(&piorNs)) atomic_store(&piorNs, dt);

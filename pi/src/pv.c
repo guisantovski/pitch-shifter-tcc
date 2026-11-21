@@ -3,6 +3,7 @@
  *
  * Cada passo corresponde ao bloco de mesmo número em pvProcessBlock.m.
  */
+#define _GNU_SOURCE   /* sincosf */
 #include "pv.h"
 
 #include <fftw3.h>
@@ -143,7 +144,7 @@ static void processa_quadro(pv_t *pv)
     const double Hs = pv->Hs;
     for (int k = 0; k < M; k++) {
         float  re = pv->espec[k][0], im = pv->espec[k][1];
-        float  mag  = hypotf(re, im);
+        float  mag  = sqrtf(re * re + im * im);
         double fase = atan2f(im, re);
 
         /* 2. Frequência verdadeira (rad/amostra) */
@@ -151,13 +152,17 @@ static void processa_quadro(pv_t *pv)
         double freqV = pv->omega[k] + dfase / Ha;
         pv->fasePrev[k] = fase;
 
-        /* 3. Fase de síntese acumulada com o hop Hs */
+        /* 3. Fase de síntese acumulada com o hop Hs (em double; depois de
+         * envolvida cabe em [-pi, pi] e o seno/cosseno em float bastam,
+         * o que importa no Cortex-A7 do Pi 2) */
         double fs = envolve(pv->faseSint[k] + Hs * freqV);
         pv->faseSint[k] = fs;
 
         /* 4. Espectro de síntese (a IFFT vem logo abaixo) */
-        pv->espec[k][0] = mag * (float)cos(fs);
-        pv->espec[k][1] = mag * (float)sin(fs);
+        float c, sn;
+        sincosf((float)fs, &sn, &c);
+        pv->espec[k][0] = mag * c;
+        pv->espec[k][1] = mag * sn;
     }
 
     /* 4. Síntese */
@@ -169,13 +174,18 @@ static void processa_quadro(pv_t *pv)
      * overlap-add */
     const int L = pv->L;
     const float g = pv->ganhoOla;
+    /* Posição de leitura em ponto fixo (Hs/Ha exato, sem acumular erro):
+     * t = i*Hs/Ha = i0 + num/Ha */
+    const int Hs_ = pv->Hs;
+    const float invHa = 1.0f / Ha;
+    int i0 = 0, num = 0;
     for (int i = 0; i < L; i++) {
-        double t  = i * pv->alfa;
-        int    i0 = (int)t;
-        float  fr = (float)(t - i0);
-        int    i1 = i0 + 1 < N ? i0 + 1 : N - 1;
-        float  v  = (1.0f - fr) * pv->tempo[i0] + fr * pv->tempo[i1];
+        float fr = num * invHa;
+        int   i1 = i0 + 1 < N ? i0 + 1 : N - 1;
+        float v  = pv->tempo[i0] + fr * (pv->tempo[i1] - pv->tempo[i0]);
         pv->ola[i] += g * v;
+        num += Hs_;
+        while (num >= Ha) { num -= Ha; i0++; }
     }
     const int tamOla = 2 * N + Ha;
     memcpy(pv->outBlk, pv->ola, Ha * sizeof(float));

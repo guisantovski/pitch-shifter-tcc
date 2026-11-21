@@ -2,7 +2,14 @@
 #   sudo apt install build-essential libfftw3-dev libasound2-dev
 #   make
 CC      ?= gcc
-CFLAGS  ?= -O3 -march=native -Wall -Wextra -std=gnu11
+# No Pi 2 (Cortex-A7, Raspberry Pi OS de 32 bits) a NEON tem que ser pedida
+# explicitamente; nas outras máquinas, -march=native basta.
+ifeq ($(shell uname -m),armv7l)
+ARCH    ?= -mcpu=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard
+else
+ARCH    ?= -march=native
+endif
+CFLAGS  ?= -O3 $(ARCH) -Wall -Wextra -std=gnu11
 LDLIBS   = -lfftw3f -lm
 
 all: pv_offline pv_alsa
